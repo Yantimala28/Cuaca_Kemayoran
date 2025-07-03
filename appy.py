@@ -8,7 +8,9 @@ from datetime import datetime
 
 st.set_page_config(page_title="Prakiraan Cuaca Jakarta", layout="wide")
 
+# Judul dan Nama
 st.title("🌧️ Prakiraan Cuaca Wilayah Jakarta (Realtime GFS via NOMADS)")
+st.markdown("**Yanti Mala_M8TB_14.24.0014**")  # ← Nama ditampilkan di bawah judul
 st.header("Web Visualisasi Pembelajaran Meteorologi Wilayah Khusus Jakarta")
 
 @st.cache_data
@@ -66,7 +68,7 @@ if st.sidebar.button("🔎 Tampilkan Visualisasi"):
         st.warning("Parameter tidak dikenali.")
         st.stop()
 
-    # Filter wilayah Jakarta: 106–108 BT dan -7.5 sampai -5.5 LS
+    # Fokus wilayah Jakarta
     var = var.sel(lat=slice(-7.5, -5.5), lon=slice(106, 108))
     if is_vector:
         u = u.sel(lat=slice(-7.5, -5.5), lon=slice(106, 108))
@@ -98,16 +100,15 @@ if st.sidebar.button("🔎 Tampilkan Visualisasi"):
                       u.values[::2, ::2], v.values[::2, ::2],
                       transform=ccrs.PlateCarree(), scale=700, width=0.002, color='black')
 
-    # Tambah fitur peta
     ax.coastlines(resolution='10m', linewidth=0.8)
     ax.add_feature(cfeature.BORDERS, linestyle=':')
     ax.add_feature(cfeature.LAND, facecolor='lightgray')
     ax.add_feature(cfeature.OCEAN, facecolor='lightblue')
 
-    # Tambahkan lokasi Kemayoran
+    # Lokasi Kemayoran
     kemayoran_lon, kemayoran_lat = 106.8462, -6.1745
     ax.plot(kemayoran_lon, kemayoran_lat, marker='o', color='red', markersize=6,
-            transform=ccrs.PlateCarree(), label='Kemayoran')
+            transform=ccrs.PlateCarree())
     ax.text(kemayoran_lon + 0.05, kemayoran_lat, 'Kemayoran', transform=ccrs.PlateCarree(),
             fontsize=8, color='red')
 
