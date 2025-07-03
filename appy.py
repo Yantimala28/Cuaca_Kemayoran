@@ -85,8 +85,8 @@ if st.sidebar.button("🔎 Tampilkan Visualisasi"):
     valid_str = valid_dt.strftime("%HUTC %a %d %b %Y")
     tstr = f"t+{forecast_hour:03d}"
 
-    title_left = f"{label}Valid {valid_str}"
-    title_right = f"GFS{tstr}"
+    title_left = f"{label} Valid {valid_str}"
+    title_right = f"GFS {tstr}"
 
     ax.set_title(title_left, loc="left", fontsize=10, fontweight="bold")
     ax.set_title(title_right, loc="right", fontsize=10, fontweight="bold")
@@ -94,21 +94,27 @@ if st.sidebar.button("🔎 Tampilkan Visualisasi"):
     if is_contour:
         cs = ax.contour(var.lon, var.lat, var.values, levels=15, colors='black', linewidths=0.8, transform=ccrs.PlateCarree())
         ax.clabel(cs, fmt="%d", colors='black', fontsize=8)
-        
     else:
         im = ax.pcolormesh(var.lon, var.lat, var.values,
-                   cmap=cmap, vmin=0, vmax=50,
-                   transform=ccrs.PlateCarree())
+                           cmap=cmap, vmin=0, vmax=50,
+                           transform=ccrs.PlateCarree())
         cbar = plt.colorbar(im, ax=ax, orientation='vertical', pad=0.02)
         cbar.set_label(label)
         if is_vector:
             ax.quiver(var.lon[::5], var.lat[::5],
                       u.values[::5, ::5], v.values[::5, ::5],
                       transform=ccrs.PlateCarree(), scale=700, width=0.002, color='black')
-        
+
     # Tambah fitur peta
     ax.coastlines(resolution='10m', linewidth=0.8)
     ax.add_feature(cfeature.BORDERS, linestyle=':')
     ax.add_feature(cfeature.LAND, facecolor='lightgray')
+
+    # Tambahkan lokasi Kemayoran
+    kemayoran_lon, kemayoran_lat = 106.8462, -6.1745
+    ax.plot(kemayoran_lon, kemayoran_lat, marker='o', color='red', markersize=6,
+            transform=ccrs.PlateCarree(), label='Kemayoran')
+    ax.text(kemayoran_lon + 0.5, kemayoran_lat, 'Kemayoran', transform=ccrs.PlateCarree(),
+            fontsize=8, color='red')
 
     st.pyplot(fig)
