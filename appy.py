@@ -10,7 +10,7 @@ st.set_page_config(page_title="Prakiraan Cuaca Jakarta", layout="wide")
 
 # Judul dan Nama
 st.title("🌧️ Prakiraan Cuaca Wilayah Jakarta (Realtime GFS via NOMADS)")
-st.markdown("**Yanti Mala_M8TB_14.24.0014**")  # ← Nama ditampilkan di bawah judul
+st.markdown("**Yanti Mala_M8TB_14.24.0014**")
 st.header("Web Visualisasi Pembelajaran Meteorologi Wilayah Khusus Jakarta")
 
 @st.cache_data
@@ -68,22 +68,22 @@ if st.sidebar.button("🔎 Tampilkan Visualisasi"):
         st.warning("Parameter tidak dikenali.")
         st.stop()
 
-    # Fokus wilayah Jakarta
+    # Filter wilayah Jakarta
     var = var.sel(lat=slice(-7.5, -5.5), lon=slice(106, 108))
     if is_vector:
         u = u.sel(lat=slice(-7.5, -5.5), lon=slice(106, 108))
         v = v.sel(lat=slice(-7.5, -5.5), lon=slice(106, 108))
 
+    # Plot
     fig = plt.figure(figsize=(8, 6))
     ax = plt.axes(projection=ccrs.PlateCarree())
     ax.set_extent([106, 108, -7.5, -5.5], crs=ccrs.PlateCarree())
 
-    valid_time = ds.time[forecast_hour].values
-    valid_dt = pd.to_datetime(str(valid_time))
-    valid_str = valid_dt.strftime("%HUTC %a %d %b %Y")
+    # Perbaikan format tanggal
+    valid_time = ds.time[forecast_hour].dt.strftime("%HUTC %a %d %b %Y").item()
     tstr = f"t+{forecast_hour:03d}"
 
-    ax.set_title(f"{label} - Valid {valid_str}", loc="left", fontsize=10, fontweight="bold")
+    ax.set_title(f"{label} - Valid {valid_time}", loc="left", fontsize=10, fontweight="bold")
     ax.set_title(f"GFS {tstr}", loc="right", fontsize=10, fontweight="bold")
 
     if is_contour:
