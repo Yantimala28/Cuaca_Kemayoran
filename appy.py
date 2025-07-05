@@ -6,13 +6,13 @@ import cartopy.feature as cfeature
 import pandas as pd
 from datetime import datetime
 
-st.set_page_config(page_title="Prakiraan Cuaca Bandara Soetta", layout="wide")
+st.set_page_config(page_title="Prakiraan Cuaca Kemayoran", layout="wide")
 
-st.title("📡 GFS Viewer Area Bandara Soetta (Realtime via NOMADS)")
+st.title("📡 GFS Viewer Area Kemayoran (Realtime via NOMADS)")
 st.header("Web Hasil Pembelajaran Pengelolaan Informasi Meteorologi")
 
 # Identitas mahasiswa
-st.markdown("**YANTI MALA**  \n*UAS PIM M8TB 2025*")
+st.markdown("**YANTI MALA**  \n*M8TB_14.24.0014_2025*")
 
 @st.cache_data
 def load_dataset(run_date, run_hour):
