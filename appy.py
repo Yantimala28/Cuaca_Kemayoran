@@ -7,9 +7,8 @@ import pandas as pd
 from datetime import datetime
 
 st.set_page_config(page_title="Prakiraan Cuaca Wilayah Jakarta", layout="wide")
-
-st.title("📡 Global Forecast System Viewer (Wilayah Jakarta)")
-st.markdown("### Yanti Mala_M8TB_14.24.0014")  # Nama di bawah judul
+st.title("📡 Global Forecast System Viewer - Wilayah Jakarta")
+st.markdown("### Yanti Mala_M8TB_14.24.0014")
 
 @st.cache_data
 def load_dataset(run_date, run_hour):
@@ -18,8 +17,6 @@ def load_dataset(run_date, run_hour):
     return ds
 
 st.sidebar.title("⚙️ Pengaturan")
-
-# Input pengguna
 today = datetime.utcnow()
 run_date = st.sidebar.date_input("Tanggal Run GFS (UTC)", today.date())
 run_hour = st.sidebar.selectbox("Jam Run GFS (UTC)", ["00", "06", "12", "18"])
@@ -30,84 +27,92 @@ parameter = st.sidebar.selectbox("Parameter", [
     "Angin Permukaan (ugrd10m & vgrd10m)",
     "Tekanan Permukaan Laut (prmslmsl)"
 ])
+show_contour = st.sidebar.checkbox("Tampilkan Kontur (untuk tekanan atau lainnya)", value=False)
 
 if st.sidebar.button("🔎 Tampilkan Visualisasi"):
     try:
         ds = load_dataset(run_date.strftime("%Y%m%d"), run_hour)
+        if forecast_hour >= len(ds.time):
+            st.error("Forecast hour melebihi jangkauan data.")
+            st.stop()
         st.success("Dataset berhasil dimuat.")
     except Exception as e:
         st.error(f"Gagal memuat data: {e}")
         st.stop()
 
-    is_contour = False
     is_vector = False
 
     if "pratesfc" in parameter:
         var = ds["pratesfc"][forecast_hour, :, :] * 3600
         label = "Curah Hujan (mm/jam)"
         cmap = "Blues"
+        vmin, vmax = 0, 50
     elif "tmp2m" in parameter:
         var = ds["tmp2m"][forecast_hour, :, :] - 273.15
         label = "Suhu (°C)"
         cmap = "coolwarm"
+        vmin, vmax = 20, 35
     elif "ugrd10m" in parameter:
         u = ds["ugrd10m"][forecast_hour, :, :]
         v = ds["vgrd10m"][forecast_hour, :, :]
-        speed = (u**2 + v**2)**0.5 * 1.94384  # konversi ke knot
+        speed = (u**2 + v**2)**0.5 * 1.94384
         var = speed
         label = "Kecepatan Angin (knot)"
-        cmap = plt.cm.get_cmap("RdYlGn_r", 10)
+        cmap = "YlGnBu"
+        vmin, vmax = 0, 20
         is_vector = True
     elif "prmsl" in parameter:
         var = ds["prmslmsl"][forecast_hour, :, :] / 100
         label = "Tekanan Permukaan Laut (hPa)"
         cmap = "cool"
-        is_contour = True
+        vmin, vmax = 1000, 1020
     else:
         st.warning("Parameter tidak dikenali.")
         st.stop()
 
-    # Fokus wilayah Jakarta: 106.5 - 107.1 BT, -6.5 - -5.9 LS
-    var = var.sel(lat=slice(-6.5, -5.9), lon=slice(106.5, 107.1))
+    # Fokus wilayah Jakarta dan sekitarnya: Tambahkan margin
+    var = var.sel(lat=slice(-6.4, -5.8), lon=slice(106.4, 107.2))
 
     if is_vector:
-        u = u.sel(lat=slice(-6.5, -5.9), lon=slice(106.5, 107.1))
-        v = v.sel(lat=slice(-6.5, -5.9), lon=slice(106.5, 107.1))
+        u = u.sel(lat=slice(-6.4, -5.8), lon=slice(106.4, 107.2))
+        v = v.sel(lat=slice(-6.4, -5.8), lon=slice(106.4, 107.2))
 
-    fig = plt.figure(figsize=(10, 8))
+    fig = plt.figure(figsize=(12, 10))
     ax = plt.axes(projection=ccrs.PlateCarree())
-    ax.set_extent([106.5, 107.1, -6.5, -5.9], crs=ccrs.PlateCarree())
+    ax.set_extent([106.4, 107.2, -6.4, -5.8], crs=ccrs.PlateCarree())
 
     valid_time = pd.to_datetime(str(ds.time[forecast_hour].values))
     valid_str = valid_time.strftime("%HUTC %a %d %b %Y")
     tstr = f"t+{forecast_hour:03d}"
 
-    ax.set_title(f"{label} - Valid {valid_str} (GFS {tstr})", fontsize=12, fontweight="bold", pad=10)
+    ax.set_title(f"{label} - Valid {valid_str} (GFS {tstr})", fontsize=14, fontweight="bold", pad=12)
 
-    if is_contour:
+    # Plot
+    im = ax.pcolormesh(var.lon, var.lat, var.values, cmap=cmap, vmin=vmin, vmax=vmax, transform=ccrs.PlateCarree())
+    cbar = plt.colorbar(im, ax=ax, orientation='vertical', pad=0.02)
+    cbar.set_label(label)
+
+    if is_vector:
+        ax.quiver(var.lon[::2], var.lat[::2],
+                  u.values[::2, ::2], v.values[::2, ::2],
+                  transform=ccrs.PlateCarree(), scale=700, width=0.0025, color='black')
+
+    if show_contour:
         cs = ax.contour(var.lon, var.lat, var.values, levels=15, colors='black', linewidths=0.8, transform=ccrs.PlateCarree())
-        ax.clabel(cs, fmt="%d", colors='black', fontsize=8)
-    else:
-        im = ax.pcolormesh(var.lon, var.lat, var.values,
-                           cmap=cmap, vmin=0, vmax=50,
-                           transform=ccrs.PlateCarree())
-        cbar = plt.colorbar(im, ax=ax, orientation='vertical', pad=0.02)
-        cbar.set_label(label)
-        if is_vector:
-            ax.quiver(var.lon[::2], var.lat[::2],
-                      u.values[::2, ::2], v.values[::2, ::2],
-                      transform=ccrs.PlateCarree(), scale=700, width=0.002, color='black')
+        ax.clabel(cs, fmt="%.0f", colors='black', fontsize=8)
 
-    # Tambah fitur peta
+    # Tambahan fitur peta
     ax.coastlines(resolution='10m', linewidth=0.8)
     ax.add_feature(cfeature.BORDERS, linestyle=':')
     ax.add_feature(cfeature.LAND, facecolor='lightgray')
+    ax.add_feature(cfeature.LAKES, facecolor='lightblue')
+    ax.add_feature(cfeature.RIVERS)
 
-    # Tambahkan titik Kemayoran
+    # Titik lokasi Jakarta (Kemayoran)
     kemayoran_lon, kemayoran_lat = 106.8462, -6.1745
     ax.plot(kemayoran_lon, kemayoran_lat, marker='o', color='red', markersize=6,
             transform=ccrs.PlateCarree())
-    ax.text(kemayoran_lon - 0.05, kemayoran_lat - 0.03, 'Kemayoran', transform=ccrs.PlateCarree(),
+    ax.text(kemayoran_lon + 0.01, kemayoran_lat + 0.01, 'Kemayoran', transform=ccrs.PlateCarree(),
             fontsize=9, color='red')
 
     fig.tight_layout()
