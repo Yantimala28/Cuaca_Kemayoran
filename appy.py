@@ -6,9 +6,13 @@ import cartopy.feature as cfeature
 import pandas as pd
 from datetime import datetime
 
-st.set_page_config(page_title="Prakiraan Cuaca DKI Jakarta", layout="wide")
-st.title("📡 Prakiraan Cuaca - DKI Jakarta (GFS)")
-st.markdown("### Yanti Mala_M8TB_14.24.0014")
+st.set_page_config(page_title="Prakiraan Cuaca Bandara Soetta", layout="wide")
+
+st.title("📡 GFS Viewer Area Bandara Soetta (Realtime via NOMADS)")
+st.header("Web Hasil Pembelajaran Pengelolaan Informasi Meteorologi")
+
+# Identitas mahasiswa
+st.markdown("**YANTI MALA**  \n*UAS PIM M8TB 2025*")
 
 @st.cache_data
 def load_dataset(run_date, run_hour):
@@ -16,8 +20,9 @@ def load_dataset(run_date, run_hour):
     ds = xr.open_dataset(base_url)
     return ds
 
-# Sidebar
 st.sidebar.title("⚙️ Pengaturan")
+
+# Input pengguna
 today = datetime.utcnow()
 run_date = st.sidebar.date_input("Tanggal Run GFS (UTC)", today.date())
 run_hour = st.sidebar.selectbox("Jam Run GFS (UTC)", ["00", "06", "12", "18"])
@@ -28,90 +33,89 @@ parameter = st.sidebar.selectbox("Parameter", [
     "Angin Permukaan (ugrd10m & vgrd10m)",
     "Tekanan Permukaan Laut (prmslmsl)"
 ])
-show_contour = st.sidebar.checkbox("Tampilkan Kontur", value=False)
 
 if st.sidebar.button("🔎 Tampilkan Visualisasi"):
     try:
         ds = load_dataset(run_date.strftime("%Y%m%d"), run_hour)
         if forecast_hour >= len(ds.time):
-            st.error("Forecast hour melebihi jangkauan data.")
+            st.error("Data untuk jam ke-{} belum tersedia.".format(forecast_hour))
             st.stop()
         st.success("Dataset berhasil dimuat.")
     except Exception as e:
         st.error(f"Gagal memuat data: {e}")
         st.stop()
 
+    is_contour = False
     is_vector = False
 
     if "pratesfc" in parameter:
         var = ds["pratesfc"][forecast_hour, :, :] * 3600
         label = "Curah Hujan (mm/jam)"
         cmap = "Blues"
-        vmin, vmax = 0, 50
     elif "tmp2m" in parameter:
         var = ds["tmp2m"][forecast_hour, :, :] - 273.15
         label = "Suhu (°C)"
         cmap = "coolwarm"
-        vmin, vmax = 24, 36
     elif "ugrd10m" in parameter:
         u = ds["ugrd10m"][forecast_hour, :, :]
         v = ds["vgrd10m"][forecast_hour, :, :]
-        speed = (u**2 + v**2)**0.5 * 1.94384
+        speed = (u**2 + v**2)**0.5 * 1.94384  # konversi ke knot
         var = speed
         label = "Kecepatan Angin (knot)"
-        cmap = "YlGnBu"
-        vmin, vmax = 0, 25
+        cmap = plt.cm.get_cmap("RdYlGn_r", 10)
         is_vector = True
     elif "prmsl" in parameter:
         var = ds["prmslmsl"][forecast_hour, :, :] / 100
         label = "Tekanan Permukaan Laut (hPa)"
         cmap = "cool"
-        vmin, vmax = 1000, 1020
+        is_contour = True
     else:
         st.warning("Parameter tidak dikenali.")
         st.stop()
 
-    # Wilayah DKI Jakarta lebih sempit & detail
-    lat_min, lat_max = -6.4, -5.9
-    lon_min, lon_max = 106.6, 107.05
+    # Fokus area Bandara Soetta (Cengkareng)
+    var = var.sel(lat=slice(-7, -5), lon=slice(105, 108))
 
-    var = var.sel(lat=slice(lat_min, lat_max), lon=slice(lon_min, lon_max))
     if is_vector:
-        u = u.sel(lat=slice(lat_min, lat_max), lon=slice(lon_min, lon_max))
-        v = v.sel(lat=slice(lat_min, lat_max), lon=slice(lon_min, lon_max))
+        u = u.sel(lat=slice(-7, -5), lon=slice(105, 108))
+        v = v.sel(lat=slice(-7, -5), lon=slice(105, 108))
 
-    fig = plt.figure(figsize=(12, 10))
+    # Buat plot
+    fig = plt.figure(figsize=(8, 6))
     ax = plt.axes(projection=ccrs.PlateCarree())
-    ax.set_extent([lon_min, lon_max, lat_min, lat_max], crs=ccrs.PlateCarree())
+    ax.set_extent([105, 108, -7, -5], crs=ccrs.PlateCarree())
 
-    valid_time = pd.to_datetime(str(ds.time[forecast_hour].values))
-    valid_str = valid_time.strftime("%HUTC %a %d %b %Y")
+    valid_time = ds.time[forecast_hour].values
+    valid_dt = pd.to_datetime(str(valid_time))
+    valid_str = valid_dt.strftime("%HUTC %a %d %b %Y")
     tstr = f"t+{forecast_hour:03d}"
 
-    ax.set_title(f"{label} - Valid {valid_str} (GFS {tstr})", fontsize=14, fontweight="bold", pad=10)
+    ax.set_title(f"{label} Valid {valid_str}", loc="left", fontsize=10, fontweight="bold")
+    ax.set_title(f"GFS {tstr}", loc="right", fontsize=10, fontweight="bold")
 
-    im = ax.pcolormesh(var.lon, var.lat, var.values, cmap=cmap, vmin=vmin, vmax=vmax, transform=ccrs.PlateCarree())
-    cbar = plt.colorbar(im, ax=ax, orientation='vertical', pad=0.02)
-    cbar.set_label(label)
+    if is_contour:
+        cs = ax.contour(var.lon, var.lat, var.values, levels=15, colors='black', linewidths=0.8, transform=ccrs.PlateCarree())
+        ax.clabel(cs, fmt="%d", colors='black', fontsize=8)
+    else:
+        im = ax.pcolormesh(var.lon, var.lat, var.values,
+                           cmap=cmap, vmin=0, vmax=50,
+                           transform=ccrs.PlateCarree())
+        cbar = plt.colorbar(im, ax=ax, orientation='vertical', pad=0.02)
+        cbar.set_label(label)
+        if is_vector:
+            ax.quiver(var.lon[::1], var.lat[::1],
+                      u.values[::1, ::1], v.values[::1, ::1],
+                      transform=ccrs.PlateCarree(), scale=500, width=0.002, color='black')
 
-    if is_vector:
-        ax.quiver(var.lon[::2], var.lat[::2], u.values[::2, ::2], v.values[::2, ::2],
-                  transform=ccrs.PlateCarree(), scale=700, width=0.0025, color='black')
+    # Tambahkan fitur peta
+    ax.coastlines(resolution='10m', linewidth=0.8)
+    ax.add_feature(cfeature.BORDERS, linestyle=':')
+    ax.add_feature(cfeature.LAND, facecolor='lightgray')
 
-    if show_contour:
-        cs = ax.contour(var.lon, var.lat, var.values, levels=10, colors='black', linewidths=0.6, transform=ccrs.PlateCarree())
-        ax.clabel(cs, fmt="%.0f", colors='black', fontsize=8)
+    # Tambahkan titik lokasi dan nama kota
+    lon_kota, lat_kota = 106.655, -6.125
+    ax.plot(lon_kota, lat_kota, marker='o', color='red', markersize=6, transform=ccrs.PlateCarree())
+    ax.text(lon_kota + 0.1, lat_kota + 0.1, "Cengkareng (Soetta)", fontsize=9, fontweight='bold', color='black',
+            transform=ccrs.PlateCarree(), bbox=dict(facecolor='white', edgecolor='black', boxstyle='round,pad=0.2'))
 
-    # Tambahan fitur agar peta terlihat "hidup"
-    ax.coastlines(resolution='10m', linewidth=0.7)
-    ax.add_feature(cfeature.BORDERS.with_scale('10m'), linestyle=':')
-    ax.add_feature(cfeature.LAND, facecolor='whitesmoke')
-    ax.add_feature(cfeature.RIVERS, edgecolor='blue', linewidth=0.5)
-    ax.add_feature(cfeature.LAKES, facecolor='lightblue', alpha=0.5)
-
-    # Titik pusat Kemayoran, Jakarta
-    ax.plot(106.8462, -6.1745, marker='o', color='red', markersize=6, transform=ccrs.PlateCarree())
-    ax.text(106.86, -6.18, 'Kemayoran', transform=ccrs.PlateCarree(), fontsize=9, color='red')
-
-    fig.tight_layout()
     st.pyplot(fig)
