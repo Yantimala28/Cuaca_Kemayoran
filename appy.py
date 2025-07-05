@@ -12,7 +12,7 @@ st.title("📡 GFS Viewer Area Kemayoran (Realtime via NOMADS)")
 st.header("Web Hasil Pembelajaran Pengelolaan Informasi Meteorologi")
 
 # Identitas mahasiswa
-st.markdown("**YANTI MALA**  \n*UAS M8TB 2025*")
+st.markdown("**YANTI MALA**  \n*KPT M8TB 2025*")
 
 @st.cache_data
 def load_dataset(run_date, run_hour):
@@ -115,7 +115,7 @@ if st.sidebar.button("🔎 Tampilkan Visualisasi"):
     # Tambahkan titik lokasi dan nama kota
     lon_kota, lat_kota = 106.861, -6.15
     ax.plot(lon_kota, lat_kota, marker='o', color='red', markersize=6, transform=ccrs.PlateCarree())
-    ax.text(lon_kota + 0.1, lat_kota + 0.1, "Kemayoran (BMKG Pusat)", fontsize=9, fontweight='bold', color='black',
+    ax.text(lon_kota + 0.1, lat_kota + 0.1, "Kemayoran (BMKG Pusat)", fontsize=8, fontweight='bold', color='blue',
             transform=ccrs.PlateCarree(), bbox=dict(facecolor='white', edgecolor='black', boxstyle='round,pad=0.2'))
 
     st.pyplot(fig)
