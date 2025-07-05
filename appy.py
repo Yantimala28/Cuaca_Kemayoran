@@ -115,7 +115,7 @@ if st.sidebar.button("🔎 Tampilkan Visualisasi"):
     # Tambahkan titik lokasi dan nama kota
     lon_kota, lat_kota = 106.655, -6.125
     ax.plot(lon_kota, lat_kota, marker='o', color='red', markersize=6, transform=ccrs.PlateCarree())
-    ax.text(lon_kota + 0.1, lat_kota + 0.1, "Cengkareng (Soetta)", fontsize=9, fontweight='bold', color='black',
+    ax.text(lon_kota + 0.1, lat_kota + 0.1, "kemayoran (Kemayoran)", fontsize=9, fontweight='bold', color='black',
             transform=ccrs.PlateCarree(), bbox=dict(facecolor='white', edgecolor='black', boxstyle='round,pad=0.2'))
 
     st.pyplot(fig)
